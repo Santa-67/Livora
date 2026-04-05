@@ -1,0 +1,19 @@
+import joblib
+
+model_filename = 'roommate_compatibility_model.joblib'
+
+# Save the trained model to a .joblib file
+
+joblib.dump(rf_classifier, model_filename)
+
+import joblib
+
+fake_model_filename = 'fake_profile_detector.joblib'
+
+joblib.dump(fake_detector, fake_model_filename)
+
+import joblib
+
+fake_model_filename = 'fake_profile_detector.joblib'
+
+joblib.dump(fake_detector, fake_model_filename)

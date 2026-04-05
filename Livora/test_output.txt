@@ -1,0 +1,7 @@
+Age: 21, Income: 10000000, Expenses: 1 => Fake Prob: 58.44%
+Age: -50, Income: 1000000000, Expenses: 0 => Fake Prob: 58.68%
+Age: 150, Income: -50000, Expenses: -10000 => Fake Prob: 54.23%
+Age: 0, Income: 0, Expenses: 0 => Fake Prob: 53.36%
+Age: 21, Income: 50000, Expenses: 420000 => Fake Prob: 64.31%
+Age: 22, Income: 67000, Expenses: 420000 => Fake Prob: 64.31%
+Age: 100, Income: 1000000, Expenses: 1 => Fake Prob: 58.44%

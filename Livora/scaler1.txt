@@ -1,0 +1,3 @@
+<class 'sklearn.preprocessing._data.StandardScaler'>
+scale: [1.00000000e+00 1.00000000e+00 6.58976638e+03]
+mean: [1.81114553e-16 9.12684594e-18 4.26597932e+04]

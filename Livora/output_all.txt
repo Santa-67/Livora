@@ -1,0 +1,6 @@
+Arjun -> Fake Prob: 57.82% (ratio: 1.25)
+Priya -> Fake Prob: 92.00% (ratio: 1.50)
+Rohan -> Fake Prob: 57.82% (ratio: 1.25)
+Emily -> Fake Prob: 57.82% (ratio: 1.50)
+Vikram -> Fake Prob: 56.93% (ratio: 2.25)
+Jordan -> Fake Prob: 57.82% (ratio: 1.14)

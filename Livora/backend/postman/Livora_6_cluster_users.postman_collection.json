@@ -1,0 +1,467 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Livora — 6 users + questionnaires (ML clusters)",
+    "description": "1) Run each folder in order: Register → Apply questionnaire → My cluster.\n2) Register tests save Bearer tokens to collection variables token_cluster1 … token_cluster6.\n3) Actual cluster IDs depend on roommate_compatibility_model.joblib; use My cluster to see them.\n4) Log in as your main account, complete your questionnaire, then POST /match/ai to compare compatibility with all six.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:5000" },
+    { "key": "token_cluster1", "value": "" },
+    { "key": "token_cluster2", "value": "" },
+    { "key": "token_cluster3", "value": "" },
+    { "key": "token_cluster4", "value": "" },
+    { "key": "token_cluster5", "value": "" },
+    { "key": "token_cluster6", "value": "" },
+    { "key": "token_main", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Cluster user 1 — quiet / budget / vegetarian",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if ((pm.response.code === 200 || pm.response.code === 201) && j.access_token) {",
+                  "    pm.collectionVariables.set('token_cluster1', j.access_token);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cluster.user1@livora.test\",\n  \"password\": \"ClusterTest1!\",\n  \"name\": \"Arjun Mehta\",\n  \"gender\": \"male\",\n  \"bio\": \"Early nights, quiet flat, veg meals.\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register",
+            "description": "Change email if already registered; then use Login instead."
+          }
+        },
+        {
+          "name": "Apply questionnaire",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster1}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 22,\n  \"income\": 15000,\n  \"expenses\": 12000,\n  \"social_habit_score\": 0.12,\n  \"drinks\": \"not at all\",\n  \"smokes\": \"no\",\n  \"drugs\": \"never\",\n  \"pets\": \"no\",\n  \"diet\": \"vegetarian\",\n  \"education\": \"working on college/university\",\n  \"body_type\": \"thin\",\n  \"sex\": \"m\",\n  \"orientation\": \"straight\",\n  \"status\": \"single\",\n  \"region\": \"other\"\n}"
+            },
+            "url": "{{baseUrl}}/ml/apply-questionnaire"
+          }
+        },
+        {
+          "name": "My cluster",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster1}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/ml/my-cluster"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cluster user 2 — high income / social / party",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if ((pm.response.code === 200 || pm.response.code === 201) && j.access_token) {",
+                  "    pm.collectionVariables.set('token_cluster2', j.access_token);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cluster.user2@livora.test\",\n  \"password\": \"ClusterTest2!\",\n  \"name\": \"Priya Nair\",\n  \"gender\": \"female\",\n  \"bio\": \"Work hard, party weekends.\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Apply questionnaire",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster2}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 28,\n  \"income\": 120000,\n  \"expenses\": 80000,\n  \"social_habit_score\": 0.95,\n  \"drinks\": \"very often\",\n  \"smokes\": \"yes\",\n  \"drugs\": \"sometimes\",\n  \"pets\": \"likes dogs\",\n  \"diet\": \"anything\",\n  \"education\": \"graduated from masters program\",\n  \"body_type\": \"athletic\",\n  \"sex\": \"f\",\n  \"orientation\": \"straight\",\n  \"status\": \"available\",\n  \"region\": \"california\"\n}"
+            },
+            "url": "{{baseUrl}}/ml/apply-questionnaire"
+          }
+        },
+        {
+          "name": "My cluster",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster2}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/ml/my-cluster"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cluster user 3 — academic / moderate NYC",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if ((pm.response.code === 200 || pm.response.code === 201) && j.access_token) {",
+                  "    pm.collectionVariables.set('token_cluster3', j.access_token);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cluster.user3@livora.test\",\n  \"password\": \"ClusterTest3!\",\n  \"name\": \"Rohan Verma\",\n  \"gender\": \"male\",\n  \"bio\": \"Grad student, keeps common areas tidy.\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Apply questionnaire",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster3}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 24,\n  \"income\": 35000,\n  \"expenses\": 28000,\n  \"social_habit_score\": 0.38,\n  \"drinks\": \"rarely\",\n  \"smokes\": \"trying to quit\",\n  \"drugs\": \"never\",\n  \"pets\": \"likes cats\",\n  \"diet\": \"anything\",\n  \"education\": \"graduated from college/university\",\n  \"body_type\": \"average\",\n  \"sex\": \"m\",\n  \"orientation\": \"straight\",\n  \"status\": \"single\",\n  \"region\": \"new york\"\n}"
+            },
+            "url": "{{baseUrl}}/ml/apply-questionnaire"
+          }
+        },
+        {
+          "name": "My cluster",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster3}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/ml/my-cluster"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cluster user 4 — Texas / dog owner",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if ((pm.response.code === 200 || pm.response.code === 201) && j.access_token) {",
+                  "    pm.collectionVariables.set('token_cluster4', j.access_token);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cluster.user4@livora.test\",\n  \"password\": \"ClusterTest4!\",\n  \"name\": \"Emily Garcia\",\n  \"gender\": \"female\",\n  \"bio\": \"Big dog, needs yard or walks.\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Apply questionnaire",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster4}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 26,\n  \"income\": 45000,\n  \"expenses\": 30000,\n  \"social_habit_score\": 0.55,\n  \"drinks\": \"socially\",\n  \"smokes\": \"no\",\n  \"drugs\": \"never\",\n  \"pets\": \"has dogs\",\n  \"diet\": \"anything\",\n  \"education\": \"graduated from college/university\",\n  \"body_type\": \"a little extra\",\n  \"sex\": \"f\",\n  \"orientation\": \"straight\",\n  \"status\": \"single\",\n  \"region\": \"texas\"\n}"
+            },
+            "url": "{{baseUrl}}/ml/apply-questionnaire"
+          }
+        },
+        {
+          "name": "My cluster",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster4}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/ml/my-cluster"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cluster user 5 — vegan / athletic / high earner",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if ((pm.response.code === 200 || pm.response.code === 201) && j.access_token) {",
+                  "    pm.collectionVariables.set('token_cluster5', j.access_token);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cluster.user5@livora.test\",\n  \"password\": \"ClusterTest5!\",\n  \"name\": \"Vikram Singh\",\n  \"gender\": \"male\",\n  \"bio\": \"Gym before work, meal prep Sundays.\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Apply questionnaire",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster5}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 25,\n  \"income\": 90000,\n  \"expenses\": 40000,\n  \"social_habit_score\": 0.72,\n  \"drinks\": \"rarely\",\n  \"smokes\": \"no\",\n  \"drugs\": \"never\",\n  \"pets\": \"no\",\n  \"diet\": \"vegan\",\n  \"education\": \"graduated from masters program\",\n  \"body_type\": \"athletic\",\n  \"sex\": \"m\",\n  \"orientation\": \"straight\",\n  \"status\": \"single\",\n  \"region\": \"california\"\n}"
+            },
+            "url": "{{baseUrl}}/ml/apply-questionnaire"
+          }
+        },
+        {
+          "name": "My cluster",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster5}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/ml/my-cluster"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cluster user 6 — Florida / eclectic",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if ((pm.response.code === 200 || pm.response.code === 201) && j.access_token) {",
+                  "    pm.collectionVariables.set('token_cluster6', j.access_token);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cluster.user6@livora.test\",\n  \"password\": \"ClusterTest6!\",\n  \"name\": \"Jordan Lee\",\n  \"gender\": \"other\",\n  \"bio\": \"Artist schedule, two cats.\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Apply questionnaire",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster6}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 30,\n  \"income\": 40000,\n  \"expenses\": 35000,\n  \"social_habit_score\": 0.62,\n  \"drinks\": \"often\",\n  \"smokes\": \"when drinking\",\n  \"drugs\": \"sometimes\",\n  \"pets\": \"has cats\",\n  \"diet\": \"strictly other\",\n  \"education\": \"high school\",\n  \"body_type\": \"full figured\",\n  \"sex\": \"f\",\n  \"orientation\": \"bisexual\",\n  \"status\": \"seeing someone\",\n  \"region\": \"florida\"\n}"
+            },
+            "url": "{{baseUrl}}/ml/apply-questionnaire"
+          }
+        },
+        {
+          "name": "My cluster",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_cluster6}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/ml/my-cluster"
+          }
+        }
+      ]
+    },
+    {
+      "name": "You — login main account",
+      "item": [
+        {
+          "name": "Login (set token_main)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (pm.response.code === 200 && j.access_token) {",
+                  "    pm.collectionVariables.set('token_main', j.access_token);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"YOUR_EMAIL@example.com\",\n  \"password\": \"YOUR_PASSWORD\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Edit email/password. On success, token_main is set for Match AI."
+          }
+        },
+        {
+          "name": "Apply your questionnaire (optional)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_main}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"age\": 23,\n  \"income\": 50000,\n  \"expenses\": 32000,\n  \"social_habit_score\": 0.5,\n  \"drinks\": \"socially\",\n  \"smokes\": \"no\",\n  \"drugs\": \"never\",\n  \"pets\": \"likes cats\",\n  \"diet\": \"anything\",\n  \"education\": \"graduated from college/university\",\n  \"body_type\": \"average\",\n  \"sex\": \"m\",\n  \"orientation\": \"straight\",\n  \"status\": \"single\",\n  \"region\": \"new york\"\n}"
+            },
+            "url": "{{baseUrl}}/ml/apply-questionnaire"
+          }
+        },
+        {
+          "name": "Match AI — compare with all six users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_main}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/match/ai",
+            "description": "Returns top 10 candidates with compatibility_score and clusters when ML is active. Ensure the six test users exist and have applied questionnaires."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Debug — pairwise vectors (no DB)",
+      "item": [
+        {
+          "name": "Roommate features A vs B",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token_main}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"features_a\": {\n    \"age\": 23,\n    \"income\": 50000,\n    \"social_habit_score\": 0.5\n  },\n  \"features_b\": {\n    \"age\": 28,\n    \"income\": 120000,\n    \"social_habit_score\": 0.95\n  }\n}"
+            },
+            "url": "{{baseUrl}}/ml/roommate-features",
+            "description": "Fills missing model columns with 0. Prefer full keys matching GET /ml/health-models feature list from your notebook."
+          }
+        }
+      ]
+    }
+  ]
+}

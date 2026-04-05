@@ -1,0 +1,28 @@
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+Flask-JWT-Extended
+Flask-Marshmallow
+marshmallow-sqlalchemy
+Flask-Cors
+Flask-Mail
+Flask-Login
+Flask-OAuthlib
+Flask-SocketIO
+Flask-Admin
+python-dotenv
+requests
+Pillow
+Werkzeug
+psycopg2-binary
+celery
+redis
+geopy
+opencv-python
+# NumPy 2.x removed ComplexWarning from numpy.core.numeric; older sklearn fails on import.
+# Pin NumPy 1.x OR upgrade sklearn to >=1.5 (supports NumPy 2). This stack is tested with NumPy 1.26.
+numpy>=1.26.4,<2.0
+scikit-learn>=1.3.0
+joblib
+pandas
+gunicorn

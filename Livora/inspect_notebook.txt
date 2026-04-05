@@ -1,0 +1,468 @@
+---
+# Create a working copy for feature engineering
+df_fe = df_final.copy()
+# 1. Income-to-Expense Ratio
+# Since income and expenses were standardized (mean 0), we should use the original values for the ratio
+# We'll use the values from df_encoded before scaling for calculation
+raw_income = df_encoded['income'].replace(0, 1) # Avoid division by zero if any
+raw_expenses = df_encoded['expenses'].replace(0, 1)
+df_fe['income_expense_ratio'] = raw_income / raw_expenses
+# 2. Age Bins (Categorical interaction)
+# Helping the model understand life-stages (e.g., student, early career, established)
+df_fe['is_young_adult'] = (df_encoded['age'] <= 25).astype(int)
+df_fe['is_mid_career'] = ((df_encoded['age'] > 25) & (df_encoded['age'] <= 40)).astype(int)
+# 3. Social Intensity Score
+# Combine 'drinks' and 'smokes' frequencies if they exist in the one-hot columns
+# We look for columns starting with these prefixes
+drink_cols = [c for c in df_fe.columns if c.startswith('drinks_') and 'not at all' not in c and 'rarely' not in c]
+smoke_cols = [c for c in df_fe.columns if c.startswith('smokes_') and 'no' not in c]
+df_fe['social_habit_score'] = df_fe[drink_cols].sum(axis=1) + df_fe[smoke_cols].sum(axis=1)
+# 4. Standardize the newly created continuous features
+scaler_fe = StandardScaler()
+df_fe[['income_expense_ratio', 'social_habit_score']] = scaler_fe.fit_transform(df_fe[['income_expense_ratio', 'social_habit_score']])
+print(f"New features added. Total columns: {df_fe.shape[1]}")
+display(df_fe[['income_expense_ratio', 'is_young_adult', 'is_mid_career', 'social_habit_score']].head())
+# Update df_final for subsequent modeling
+df_final = df_fe
+
+---
+# Grouping by the weighted cluster to identify personas
+cluster_summary = df_final.groupby('weighted_cluster').agg({
+    'age': 'mean',
+    'income': 'mean',
+    'expenses': 'mean',
+    'income_expense_ratio': 'mean',
+    'social_habit_score': 'mean',
+    'is_young_adult': 'mean'
+}).reset_index()
+# Renaming for clarity in presentation
+cluster_summary.columns = [
+    'Cluster ID', 'Avg Age (Scaled)', 'Avg Income (Scaled)',
+    'Avg Expenses (Scaled)', 'Financial Ratio', 'Social Intensity', 'Young Adult %'
+]
+print("Cluster Archetype Summary:")
+display(cluster_summary)
+# Visualizing the Social vs Financial trade-off per cluster
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=cluster_summary, x='Financial Ratio', y='Social Intensity',
+                hue='Cluster ID', size='Young Adult %', sizes=(100, 400), palette='viridis')
+plt.title('Cluster Persona Mapping: Financial Stability vs. Social Habits')
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.show()
+
+---
+print("Descriptive statistics for Cluster 1 (scaled features):")
+display(df_final[df_final['weighted_cluster'] == 1][['age', 'income', 'expenses', 'income_expense_ratio', 'social_habit_score']].describe())
+print("Descriptive statistics for all clusters (scaled features):")
+display(df_final[['age', 'income', 'expenses', 'income_expense_ratio', 'social_habit_score']].describe())
+
+---
+iso = IsolationForest(contamination=0.05, random_state=42)
+outliers = iso.fit_predict(df_final[['age', 'income', 'expenses', 'income_expense_ratio', 'social_habit_score']])
+df_final['is_outlier'] = np.where(outliers == -1, 'Yes', 'No')
+
+---
+# 3. Cluster-wise Financial Distribution (Boxplots)
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+sns.boxplot(x='weighted_cluster', y='income', data=df_final, palette='Set3')
+plt.title('Income Distribution by Cluster')
+plt.subplot(1, 2, 2)
+sns.boxplot(x='weighted_cluster', y='expenses', data=df_final, palette='Set3')
+plt.title('Expense Distribution by Cluster')
+plt.tight_layout()
+plt.show()
+# 4. Feature Correlation Heatmap
+plt.figure(figsize=(8, 6))
+corr_matrix = df_final[['age', 'income', 'expenses', 'income_expense_ratio', 'social_habit_score']].corr()
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt='.2f')
+plt.title('Correlation Heatmap of Compatibility Features')
+plt.show()
+
+---
+# Create a working copy for feature engineering
+df_fe = df_final.copy()
+# 1. Income-to-Expense Ratio
+# Since income and expenses were standardized (mean 0), we should use the original values for the ratio
+# We'll use the values from df_encoded before scaling for calculation
+# Ensure these columns exist before calculation
+if 'income' in df_encoded.columns and 'expenses' in df_encoded.columns:
+    raw_income = df_encoded['income'].replace(0, 1) # Avoid division by zero if any
+    raw_expenses = df_encoded['expenses'].replace(0, 1)
+    df_fe['income_expense_ratio'] = raw_income / raw_expenses
+else:
+    # Fallback or error handling if columns are missing
+    df_fe['income_expense_ratio'] = 0 # Or handle as appropriate
+# 2. Age Bins (Categorical interaction)
+# Helping the model understand life-stages (e.g., student, early career, established)
+if 'age' in df_encoded.columns:
+    df_fe['is_young_adult'] = (df_encoded['age'] <= 25).astype(int)
+    df_fe['is_mid_career'] = ((df_encoded['age'] > 25) & (df_encoded['age'] <= 40)).astype(int)
+else:
+    df_fe['is_young_adult'] = 0
+    df_fe['is_mid_career'] = 0
+# 3. Social Intensity Score
+# Combine 'drinks' and 'smokes' frequencies if they exist in the one-hot columns
+# We look for columns starting with these prefixes
+drink_cols = [c for c in df_fe.columns if c.startswith('drinks_') and 'not at all' not in c and 'rarely' not in c]
+smoke_cols = [c for c in df_fe.columns if c.startswith('smokes_') and 'no' not in c]
+# If drink_cols or smoke_cols are empty, it means one-hot encoding hasn't been applied yet for these features.
+# To avoid error and ensure 'social_habit_score' is always created, we should re-create these features here if they don't exist after get_dummies.
+# However, considering the overall notebook flow, these should ideally be one-hot encoded already in df_final.
+# Assuming df_final contains appropriate one-hot encoded columns for drinks and smokes,
+# the following line calculates the score. If not, this might still be problematic.
+# For now, we proceed assuming one-hot encoding is done upstream and relevant columns exist.
+# If not, a more robust fix would involve re-running get_dummies for these specific columns if needed.
+# Check if one-hot encoded versions of 'drinks' and 'smokes' are in df_fe
+# If not, we need to create dummy variables for 'drinks' and 'smokes' from df_encoded first.
+# This assumes df_final (from which df_fe is copied) has these columns. If not, this is a deeper issue.
+# Let's ensure 'df_fe' has the necessary one-hot encoded columns. If not, the original 'drinks'/'smokes' are objects.
+# The problem is that df_final from 2bbe7af7, which this cell uses, does not contain one-hot encoded versions of these. It only has the original object columns.
+# So, we need to one-hot encode them here first.
+# Identify categorical columns that are not yet one-hot encoded but are needed for social_habit_score
+categorical_cols_for_social_score = ['drinks', 'smokes']
+# Apply one-hot encoding if these columns are still categorical objects in df_fe
+for col in categorical_cols_for_social_score:
+    if col in df_fe.columns and df_fe[col].dtype == 'object':
+        df_fe = pd.get_dummies(df_fe, columns=[col], prefix=col, drop_first=False)
+drink_cols_updated = [c for c in df_fe.columns if c.startswith('drinks_') and 'not at all' not in c and 'rarely' not in c]
+smoke_cols_updated = [c for c in df_fe.columns if c.startswith('smokes_') and 'no' not in c]
+# Ensure the score column is always created, even if no matching one-hot columns are found
+if drink_cols_updated or smoke_cols_updated:
+    df_fe['social_habit_score'] = df_fe[drink_cols_updated].sum(axis=1) + df_fe[smoke_cols_updated].sum(axis=1)
+else:
+    df_fe['social_habit_score'] = 0 # Default to 0 if no relevant columns found
+# 4. Standardize the newly created continuous features
+scaler_fe = StandardScaler()
+# List of features to standardize, ensuring they exist in df_fe
+features_to_standardize = []
+if 'income_expense_ratio' in df_fe.columns:
+    features_to_standardize.append('income_expense_ratio')
+if 'social_habit_score' in df_fe.columns:
+    features_to_standardize.append('social_habit_score')
+if features_to_standardize:
+    df_fe[features_to_standardize] = scaler_fe.fit_transform(df_fe[features_to_standardize])
+# Update df_final for subsequent modeling
+df_final = df_fe.copy()
+PETS_WEIGHT = 3.0
+SMOKING_WEIGHT = 3.0
+SOCIAL_WEIGHT = 2.0
+df_weighted = df_final.copy()
+pet_cols = [c for c in df_weighted.columns if c.startswith('pets_')]
+smoke_cols = [c for c in df_weighted.columns if c.startswith('smokes_')]
+df_weighted[pet_cols] *= PETS_WEIGHT
+df_weighted[smoke_cols] *= SMOKING_WEIGHT
+# Ensure social_habit_score exists before weighting it
+if 'social_habit_score' in df_weighted.columns:
+    df_weighted['social_habit_score'] *= SOCIAL_WEIGHT
+else:
+    # This case should ideally not be hit if the feature engineering above runs correctly
+    print("Warning: 'social_habit_score' not found for weighting.")
+n_features = df_weighted.select_dtypes(include=[np.number, bool]).shape[1]
+pca_weighted = PCA(n_components=min(10, n_features))
+pca_features_weighted = pca_weighted.fit_transform(df_weighted.select_dtypes(include=[np.number, bool]))
+kmeans_weighted = KMeans(n_clusters=5, init='k-means++', random_state=42, n_init=10)
+df_final['weighted_cluster'] = kmeans_weighted.fit_predict(pca_features_weighted)
+target_user_index = 0 # @param {type:"number"}
+# Get the predicted cluster for this target user
+predicted_cluster = df_final.loc[target_user_index, 'weighted_cluster']
+# Get the region of this target user
+user_selected_region_name = df_encoded.loc[target_user_index, 'region']
+print(f"--- Compatibility Analysis for User Index {target_user_index} ---")
+print(f"Assigned Cluster Archetype: {predicted_cluster}")
+print(f"User's Region: {user_selected_region_name}")
+# Display the cluster summary for the predicted cluster to understand its archetype
+print("\nCluster Archetype Summary for the Test User's Cluster:")
+display(cluster_summary[cluster_summary['Cluster ID'] == predicted_cluster])
+import joblib
+joblib.dump(scaler_fe, 'feature_scaler.joblib')
+print('Saved feature_scaler.joblib')
+
+---
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import MinMaxScaler
+# --- Start of prepended code from 070c11d6 to ensure df_final state ---
+# Create a working copy for feature engineering
+df_fe = df_final.copy()
+# 1. Income-to-Expense Ratio
+# Since income and expenses were standardized (mean 0), we should use the original values for the ratio
+# We'll use the values from df_encoded before scaling for calculation
+# Ensure these columns exist before calculation
+if 'income' in df_encoded.columns and 'expenses' in df_encoded.columns:
+    raw_income = df_encoded['income'].replace(0, 1) # Avoid division by zero if any
+    raw_expenses = df_encoded['expenses'].replace(0, 1)
+    df_fe['income_expense_ratio'] = raw_income / raw_expenses
+else:
+    # Fallback or error handling if columns are missing
+    df_fe['income_expense_ratio'] = 0 # Or handle as appropriate
+# 2. Age Bins (Categorical interaction)
+# Helping the model understand life-stages (e.g., student, early career, established)
+if 'age' in df_encoded.columns:
+    df_fe['is_young_adult'] = (df_encoded['age'] <= 25).astype(int)
+    df_fe['is_mid_career'] = ((df_encoded['age'] > 25) & (df_encoded['age'] <= 40)).astype(int)
+else:
+    df_fe['is_young_adult'] = 0
+    df_fe['is_mid_career'] = 0
+# 3. Social Intensity Score
+# Combine 'drinks' and 'smokes' frequencies if they exist in the one-hot columns
+# We look for columns starting with these prefixes
+drink_cols = [c for c in df_fe.columns if c.startswith('drinks_') and 'not at all' not in c and 'rarely' not in c]
+smoke_cols = [c for c in df_fe.columns if c.startswith('smokes_') and 'no' not in c]
+# Identify categorical columns that are not yet one-hot encoded but are needed for social_habit_score
+categorical_cols_for_social_score = ['drinks', 'smokes']
+# Apply one-hot encoding if these columns are still categorical objects in df_fe
+for col in categorical_cols_for_social_score:
+    if col in df_fe.columns and df_fe[col].dtype == 'object':
+        df_fe = pd.get_dummies(df_fe, columns=[col], prefix=col, drop_first=False)
+drink_cols_updated = [c for c in df_fe.columns if c.startswith('drinks_') and 'not at all' not in c and 'rarely' not in c]
+smoke_cols_updated = [c for c in df_fe.columns if c.startswith('smokes_') and 'no' not in c]
+# Ensure the score column is always created, even if no matching one-hot columns are found
+if drink_cols_updated or smoke_cols_updated:
+    df_fe['social_habit_score'] = df_fe[drink_cols_updated].sum(axis=1) + df_fe[smoke_cols_updated].sum(axis=1)
+else:
+    df_fe['social_habit_score'] = 0 # Default to 0 if no relevant columns found
+# 4. Standardize the newly created continuous features
+scaler_fe = StandardScaler()
+# List of features to standardize, ensuring they exist in df_fe
+features_to_standardize = []
+if 'income_expense_ratio' in df_fe.columns:
+    features_to_standardize.append('income_expense_ratio')
+if 'social_habit_score' in df_fe.columns:
+    features_to_standardize.append('social_habit_score')
+if features_to_standardize:
+    df_fe[features_to_standardize] = scaler_fe.fit_transform(df_fe[features_to_standardize])
+# Update df_final for subsequent modeling
+df_final = df_fe.copy()
+PETS_WEIGHT = 3.0
+SMOKING_WEIGHT = 3.0
+SOCIAL_WEIGHT = 2.0
+df_weighted = df_final.copy()
+pet_cols = [c for c in df_weighted.columns if c.startswith('pets_')]
+smoke_cols = [c for c in df_weighted.columns if c.startswith('smokes_')]
+df_weighted[pet_cols] *= PETS_WEIGHT
+df_weighted[smoke_cols] *= SMOKING_WEIGHT
+# Ensure social_habit_score exists before weighting it
+if 'social_habit_score' in df_weighted.columns:
+    df_weighted['social_habit_score'] *= SOCIAL_WEIGHT
+else:
+    # This case should ideally not be hit if the feature engineering above runs correctly
+    print("Warning: 'social_habit_score' not found for weighting.")
+n_features = df_weighted.select_dtypes(include=[np.number, bool]).shape[1]
+pca_weighted = PCA(n_components=min(10, n_features))
+pca_features_weighted = pca_weighted.fit_transform(df_weighted.select_dtypes(include=[np.number, bool]))
+kmeans_weighted = KMeans(n_clusters=5, init='k-means++', random_state=42, n_init=10)
+df_final['weighted_cluster'] = kmeans_weighted.fit_predict(pca_features_weighted)
+target_user_index = 0 # @param {type:"number"}
+# Get the predicted cluster for this target user
+predicted_cluster = df_final.loc[target_user_index, 'weighted_cluster']
+# Get the region of this target user
+user_selected_region_name = df_encoded.loc[target_user_index, 'region']
+# --- End of prepended code from 070c11d6 ---
+# 1. Prepare the test user vector in the same PCA space
+# We use the PCA vector for the target_user_index
+test_user_vector = pca_features_weighted[target_user_index].reshape(1, -1)
+# 2. Get the PCA vectors for all members of the predicted cluster AND the same region
+user_cluster = predicted_cluster
+# Filter df_final for the predicted cluster AND the test user's region
+region_filter_col = f'region_{user_selected_region_name}'
+# Ensure the region column exists (it should, given previous steps)
+if region_filter_col not in df_final.columns:
+    print(f"Error: Region column {region_filter_col} not found in df_final. Please check feature encoding.")
+    # Fallback to just cluster filtering if region is missing, though this shouldn't happen
+    filtered_df_for_matches = df_final[df_final['weighted_cluster'] == user_cluster]
+else:
+    filtered_df_for_matches = df_final[(df_final['weighted_cluster'] == user_cluster) &
+                                       (df_final[region_filter_col] == True)]
+# Exclude the test user themselves from the matches
+filtered_df_for_matches = filtered_df_for_matches[filtered_df_for_matches.index != target_user_index]
+if filtered_df_for_matches.empty:
+    print(f"No other users found in Cluster {user_cluster} in {user_selected_region_name} after excluding the test user.")
+else:
+    cluster_indices = filtered_df_for_matches.index
+    cluster_pca_vectors = pca_features_weighted[cluster_indices] # This assumes index mapping works
+    # 3. Calculate Cosine Similarity in the PCA space
+    similarities = cosine_similarity(test_user_vector, cluster_pca_vectors).flatten()
+    # 4. Create results dataframe
+    # Use the original df_encoded to get readable profile details for the matched users
+    results_df = df_encoded.loc[cluster_indices].copy()
+    results_df['match_score'] = similarities
+    # Normalize scores to a 0-100% range for better interpretation
+    # Using a range like 70-99 makes scores feel more like 'compatibility' than raw similarity
+    scaler = MinMaxScaler(feature_range=(70, 99))
+    results_df['compatibility_pct'] = scaler.fit_transform(results_df[['match_score']])
+    print(f"\n--- Top 5 Compatible Roommate Matches (PCA-Space) for Cluster {user_cluster} in {user_selected_region_name} ---")
+    display(results_df.sort_values(by='compatibility_pct', ascending=False).head(5)[['age', 'sex', 'orientation', 'region', 'compatibility_pct']])
+import joblib
+joblib.dump(scaler_fe, 'feature_scaler.joblib')
+print('Saved feature_scaler.joblib')
+
+---
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import MinMaxScaler
+# --- Start of prepended code from 070c11d6 to ensure df_final state ---
+# Create a working copy for feature engineering
+df_fe = df_final.copy()
+# 1. Income-to-Expense Ratio
+# Since income and expenses were standardized (mean 0), we should use the original values for the ratio
+# We'll use the values from df_encoded before scaling for calculation
+# Ensure these columns exist before calculation
+if 'income' in df_encoded.columns and 'expenses' in df_encoded.columns:
+    raw_income = df_encoded['income'].replace(0, 1) # Avoid division by zero if any
+    raw_expenses = df_encoded['expenses'].replace(0, 1)
+    df_fe['income_expense_ratio'] = raw_income / raw_expenses
+else:
+    # Fallback or error handling if columns are missing
+    df_fe['income_expense_ratio'] = 0 # Or handle as appropriate
+# 2. Age Bins (Categorical interaction)
+# Helping the model understand life-stages (e.g., student, early career, established)
+if 'age' in df_encoded.columns:
+    df_fe['is_young_adult'] = (df_encoded['age'] <= 25).astype(int)
+    df_fe['is_mid_career'] = ((df_encoded['age'] > 25) & (df_encoded['age'] <= 40)).astype(int)
+else:
+    df_fe['is_young_adult'] = 0
+    df_fe['is_mid_career'] = 0
+# 3. Social Intensity Score
+# Combine 'drinks' and 'smokes' frequencies if they exist in the one-hot columns
+# We look for columns starting with these prefixes
+drink_cols = [c for c in df_fe.columns if c.startswith('drinks_') and 'not at all' not in c and 'rarely' not in c]
+smoke_cols = [c for c in df_fe.columns if c.startswith('smokes_') and 'no' not in c]
+# Identify categorical columns that are not yet one-hot encoded but are needed for social_habit_score
+categorical_cols_for_social_score = ['drinks', 'smokes']
+# Apply one-hot encoding if these columns are still categorical objects in df_fe
+for col in categorical_cols_for_social_score:
+    if col in df_fe.columns and df_fe[col].dtype == 'object':
+        df_fe = pd.get_dummies(df_fe, columns=[col], prefix=col, drop_first=False)
+drink_cols_updated = [c for c in df_fe.columns if c.startswith('drinks_') and 'not at all' not in c and 'rarely' not in c]
+smoke_cols_updated = [c for c in df_fe.columns if c.startswith('smokes_') and 'no' not in c]
+# Ensure the score column is always created, even if no matching one-hot columns are found
+if drink_cols_updated or smoke_cols_updated:
+    df_fe['social_habit_score'] = df_fe[drink_cols_updated].sum(axis=1) + df_fe[smoke_cols_updated].sum(axis=1)
+else:
+    df_fe['social_habit_score'] = 0 # Default to 0 if no relevant columns found
+# 4. Standardize the newly created continuous features
+scaler_fe = StandardScaler()
+# List of features to standardize, ensuring they exist in df_fe
+features_to_standardize = []
+if 'income_expense_ratio' in df_fe.columns:
+    features_to_standardize.append('income_expense_ratio')
+if 'social_habit_score' in df_fe.columns:
+    features_to_standardize.append('social_habit_score')
+if features_to_standardize:
+    df_fe[features_to_standardize] = scaler_fe.fit_transform(df_fe[features_to_standardize])
+# Update df_final for subsequent modeling
+df_final = df_fe.copy()
+PETS_WEIGHT = 3.0
+SMOKING_WEIGHT = 3.0
+SOCIAL_WEIGHT = 2.0
+df_weighted = df_final.copy()
+pet_cols = [c for c in df_weighted.columns if c.startswith('pets_')]
+smoke_cols = [c for c in df_weighted.columns if c.startswith('smokes_')]
+df_weighted[pet_cols] *= PETS_WEIGHT
+df_weighted[smoke_cols] *= SMOKING_WEIGHT
+# Ensure social_habit_score exists before weighting it
+if 'social_habit_score' in df_weighted.columns:
+    df_weighted['social_habit_score'] *= SOCIAL_WEIGHT
+else:
+    # This case should ideally not be hit if the feature engineering above runs correctly
+    print("Warning: 'social_habit_score' not found for weighting.")
+n_features = df_weighted.select_dtypes(include=[np.number, bool]).shape[1]
+pca_weighted = PCA(n_components=min(10, n_features))
+pca_features_weighted = pca_weighted.fit_transform(df_weighted.select_dtypes(include=[np.number, bool]))
+kmeans_weighted = KMeans(n_clusters=5, init='k-means++', random_state=42, n_init=10)
+df_final['weighted_cluster'] = kmeans_weighted.fit_predict(pca_features_weighted)
+target_user_index = 0 # @param {type:"number"}
+# Get the predicted cluster for this target user
+predicted_cluster = df_final.loc[target_user_index, 'weighted_cluster']
+# Get the region of this target user
+user_selected_region_name = df_encoded.loc[target_user_index, 'region']
+# --- End of prepended code from 070c11d6 ---
+# 1. Select a different cluster for comparison (e.g., Cluster 0, if not the predicted one, otherwise Cluster 2)
+other_cluster_id = 0 # @param {type:"number"}
+if other_cluster_id == predicted_cluster: # Ensure we pick a truly different cluster
+    if predicted_cluster == 0: other_cluster_id = 1
+    else: other_cluster_id = 0
+print(f"Comparing test user against Cluster {other_cluster_id} (different from their predicted Cluster {predicted_cluster})")
+# Filter by other cluster AND the user's selected region
+region_filter_col = f'region_{user_selected_region_name}'
+if region_filter_col not in df_final.columns:
+    print(f"Error: Region column {region_filter_col} not found in df_final. Please check feature encoding.")
+    filtered_df_for_other_cluster = df_final[df_final['weighted_cluster'] == other_cluster_id]
+else:
+    filtered_df_for_other_cluster = df_final[(df_final['weighted_cluster'] == other_cluster_id) &
+                                            (df_final[region_filter_col] == True)]
+if filtered_df_for_other_cluster.empty:
+    print(f"No users found in Cluster {other_cluster_id} in {user_selected_region_name}.")
+else:
+    other_cluster_indices = filtered_df_for_other_cluster.index
+    other_cluster_pca_vectors = pca_features_weighted[other_cluster_indices]
+    # 2. Use the same test user vector (for target_user_index)
+    test_user_vector = pca_features_weighted[target_user_index].reshape(1, -1)
+    # 3. Calculate Similarity with the other cluster
+    cross_similarities = cosine_similarity(test_user_vector, other_cluster_pca_vectors).flatten()
+    # 4. Create results dataframe for the other cluster
+    cross_results_df = df_encoded.loc[other_cluster_indices].copy()
+    cross_results_df['match_score'] = cross_similarities
+    # 5. Use the SAME scaler from the previous cell (if available) to ensure the % comparison is fair
+    # If results_df was empty, we need to re-fit the scaler
+    if 'results_df' in locals() and not results_df.empty:
+        # Fit scaler on the matches from the *predicted* cluster to maintain consistent scaling
+        scaler_comp = MinMaxScaler(feature_range=(70, 99))
+        scaler_comp.fit(results_df[['match_score']])
+        cross_results_df['compatibility_pct'] = scaler_comp.transform(cross_results_df[['match_score']])
+    else:
+        # Fallback if no in-cluster matches were found (shouldn't happen with sufficient data)
+        print("Warning: No in-cluster matches were found to set a consistent scaling. Scaling based on cross-cluster scores.")
+        scaler_comp = MinMaxScaler(feature_range=(70, 99))
+        cross_results_df['compatibility_pct'] = scaler_comp.fit_transform(cross_results_df[['match_score']])
+    print(f"\n--- Cross-Cluster Compatibility (Test User vs. Cluster {other_cluster_id} in {user_selected_region_name}) ---")
+    print("Note: These scores should typically be lower than same-cluster matches.")
+    display(cross_results_df.sort_values(by='compatibility_pct', ascending=False).head(5)[['age', 'sex', 'orientation', 'region', 'compatibility_pct']])
+import joblib
+joblib.dump(scaler_fe, 'feature_scaler.joblib')
+print('Saved feature_scaler.joblib')
+
+---
+from sklearn.ensemble import IsolationForest, RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split, cross_val_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import pandas as pd
+# 1. Re-generate labels (ensure state is fresh)
+iso = IsolationForest(contamination=0.05, random_state=42)
+features_for_outliers = ['age', 'income', 'expenses', 'income_expense_ratio', 'social_habit_score']
+outlier_labels = iso.fit_predict(df_final[features_for_outliers])
+df_final['is_outlier'] = np.where(outlier_labels == -1, 'Yes', 'No')
+# 2. Prepare Features
+# Drop columns that are essentially 'labels' (clusters and outlier flags)
+# Also drop 'income_expense_ratio' if it's too highly correlated with the target creation logic
+X_fake = pd.get_dummies(df_final.drop(columns=['cluster', 'weighted_cluster', 'is_outlier', 'is_young_adult', 'is_mid_career'], errors='ignore'), drop_first=False)
+y_fake = df_final['is_outlier'].map({'Yes': 1, 'No': 0})
+# 3. Stratified Split
+X_train_f, X_test_f, y_train_f, y_test_f = train_test_split(X_fake, y_fake, test_size=0.2, random_state=42, stratify=y_fake)
+# 4. Refined Random Forest to prevent overfitting
+# We reduce max_depth, increase min_samples_leaf, and reduce n_estimators
+fake_detector = RandomForestClassifier(
+    n_estimators=50,
+    max_depth=10,
+    min_samples_leaf=5,
+    class_weight='balanced',
+    random_state=42
+)
+# 5. Cross-Validation to check generalization
+cv_scores = cross_val_score(fake_detector, X_train_f, y_train_f, cv=5)
+print(f"Cross-Validation Mean Accuracy: {cv_scores.mean():.2%}")
+fake_detector.fit(X_train_f, y_train_f)
+# 6. Evaluate on Test Set
+y_pred_f = fake_detector.predict(X_test_f)
+print("\nRefined Fake Profile Detector Performance:")
+print(classification_report(y_test_f, y_pred_f))
+# 7. Confusion Matrix Visualization
+plt.figure(figsize=(6, 4))
+sns.heatmap(confusion_matrix(y_test_f, y_pred_f), annot=True, fmt='d', cmap='Blues')
+plt.title('Confusion Matrix: Fake Profile Detection')
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.show()
+

@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-night-950 text-slate-100 min-h-screen;
+  background-size: 32px 32px;
+  background-image: linear-gradient(
+      to right,
+      rgb(15 23 42 / 0.35) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgb(15 23 42 / 0.35) 1px, transparent 1px);
+}
+
+.glass {
+  @apply bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-xl bg-livora-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-livora-900/30 transition hover:bg-livora-500 active:scale-[0.98];
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center rounded-xl border border-slate-600 bg-slate-800/80 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-slate-700;
+}
+
+.input-field {
+  @apply w-full rounded-xl border border-slate-600 bg-slate-900/80 px-4 py-2.5 text-slate-100 placeholder:text-slate-500 outline-none ring-livora-500/30 focus:border-livora-500 focus:ring-2;
+}

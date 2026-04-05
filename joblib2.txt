@@ -1,0 +1,73 @@
+X_prepared = pd.get_dummies(df_final.drop(columns=['cluster', 'weighted_cluster', 'is_outlier', 'is_young_adult', 'is_mid_career'], errors='ignore'), drop_first=False)
+y = df_final['weighted_cluster']
+X_train, X_test, y_train, y_test = train_test_split(X_prepared, y, test_size=0.2, random_state=42, stratify=y)
+rf_classifier = RandomForestClassifier(n_estimators=100, max_depth=20, random_state=42, class_weight='balanced') # Added class_weight
+rf_classifier.fit(X_train, y_train)
+print(classification_report(y_test, rf_classifier.predict(X_test)))
+iso = IsolationForest(contamination=0.05, random_state=42)
+outliers = iso.fit_predict(df_final[['age', 'income', 'expenses', 'income_expense_ratio', 'social_habit_score']])
+df_final['is_outlier'] = np.where(outliers == -1, 'Yes', 'No')
+from sklearn.ensemble import IsolationForest, RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split, cross_val_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import pandas as pd
+
+# 1. Re-generate labels (ensure state is fresh)
+iso = IsolationForest(contamination=0.05, random_state=42)
+features_for_outliers = ['age', 'income', 'expenses', 'income_expense_ratio', 'social_habit_score']
+outlier_labels = iso.fit_predict(df_final[features_for_outliers])
+df_final['is_outlier'] = np.where(outlier_labels == -1, 'Yes', 'No')
+
+# 2. Prepare Features
+# Drop columns that are essentially 'labels' (clusters and outlier flags)
+# Also drop 'income_expense_ratio' if it's too highly correlated with the target creation logic
+X_fake = pd.get_dummies(df_final.drop(columns=['cluster', 'weighted_cluster', 'is_outlier', 'is_young_adult', 'is_mid_career'], errors='ignore'), drop_first=False)
+y_fake = df_final['is_outlier'].map({'Yes': 1, 'No': 0})
+
+# 3. Stratified Split
+X_train_f, X_test_f, y_train_f, y_test_f = train_test_split(X_fake, y_fake, test_size=0.2, random_state=42, stratify=y_fake)
+
+# 4. Refined Random Forest to prevent overfitting
+# We reduce max_depth, increase min_samples_leaf, and reduce n_estimators
+fake_detector = RandomForestClassifier(
+    n_estimators=50,
+    max_depth=10,
+    min_samples_leaf=5,
+    class_weight='balanced',
+    random_state=42
+)
+
+# 5. Cross-Validation to check generalization
+cv_scores = cross_val_score(fake_detector, X_train_f, y_train_f, cv=5)
+print(f"Cross-Validation Mean Accuracy: {cv_scores.mean():.2%}")
+
+fake_detector.fit(X_train_f, y_train_f)
+
+# 6. Evaluate on Test Set
+y_pred_f = fake_detector.predict(X_test_f)
+print("\nRefined Fake Profile Detector Performance:")
+print(classification_report(y_test_f, y_pred_f))
+
+# 7. Confusion Matrix Visualization
+plt.figure(figsize=(6, 4))
+sns.heatmap(confusion_matrix(y_test_f, y_pred_f), annot=True, fmt='d', cmap='Blues')
+plt.title('Confusion Matrix: Fake Profile Detection')
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.show()
+def check_profile_authenticity(user_index):
+    profile_data = X_fake.iloc[[user_index]]
+    prediction = fake_detector.predict(profile_data)[0]
+    probability = fake_detector.predict_proba(profile_data)[0][1]
+
+    status = "SUSPICIOUS" if prediction == 1 else "NORMAL"
+    print(f"Profile Analysis for User {user_index}:")
+    print(f"Status: {status}")
+    print(f"Probability of being a 'Fake' profile: {probability:.2%}")
+
+# Test on a known outlier
+outlier_idx = df_final[df_final['is_outlier'] == 'Yes'].index[0]
+check_profile_authenticity(outlier_idx)
